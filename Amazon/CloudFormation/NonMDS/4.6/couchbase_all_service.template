@@ -87,7 +87,8 @@
 		"AvailabilityZone": {
 			"Description": "Pick an AvailabilityZone for Couchbase Subnet",
 			"MinLength": "5",
-			"Type": "AWS::EC2::AvailabilityZone::Name"
+			"Type": "AWS::EC2::AvailabilityZone::Name",
+			"Default": "us-west-2b"
 		}
 	},
 
@@ -102,6 +103,15 @@
 					"default": ""
 				},
 				"Parameters": ["KeyPair", "CouchbaseInstanceType", "CouchbaseServerCount"]
+			},
+			{
+			"Label": {
+					"default": "Couchbase Authentication"
+				},
+				"Description": {
+					"default": ""
+				},
+				"Parameters": ["Admin", "Password"]
 			}],
 			"ParameterLabels": {
 
@@ -158,16 +168,16 @@
 				"AMI": ""
 			},
 			"us-east-1": {
-				"AMI": "ami-dbea9ecc"
+				"AMI": "ami-c0fe31d6"
 			},
 			"sa-east-1": {
 				"AMI": ""
 			},
 			"us-west-1": {
-				"AMI": ""
+				"AMI": "ami-c0fe31d6"
 			},
 			"us-west-2": {
-				"AMI": ""
+				"AMI": "ami-c0fe31d6"
 			}
 		}
 
@@ -345,7 +355,16 @@
 					"FromPort": "1",
 					"ToPort": "65535",
 					"CidrIp": "0.0.0.0/0"
-				}]
+				}],
+				"SecurityGroupIngress" : [
+				  {"IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp" : "0.0.0.0/0"},
+				  {"IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp" : "0.0.0.0/0"},
+				  {"IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : "0.0.0.0/0"},
+				  {"IpProtocol" : "icmp", "FromPort" : "-1", "ToPort" : "-1", "CidrIp" : "0.0.0.0/0"},
+				  {"IpProtocol" : "tcp", "FromPort" : "8091", "ToPort" : "8093", "CidrIp" : "0.0.0.0/0"},
+				  {"IpProtocol" : "tcp", "FromPort" : "18091", "ToPort" : "18093", "CidrIp" : "0.0.0.0/0"},
+				  {"IpProtocol" : "tcp", "FromPort" : "11207", "ToPort" : "11215", "CidrIp" : "0.0.0.0/0"}
+				  ]
 			}
 		},
 		"CouchbaseNode0EIP": {
