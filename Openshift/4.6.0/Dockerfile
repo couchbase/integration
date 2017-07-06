@@ -4,31 +4,28 @@ FROM registry.access.redhat.com/rhel7
 
 MAINTAINER Couchbase Docker Team <docker@couchbase.com>
 
+COPY help.md /tmp/
 
 # Install yum dependencies
-RUN yum install -y tar \
-    && yum clean all && \
-      yum -y install openssl \
-      lsof lshw net-tools numactl \
-      sysstati wget screen psmisc zip unzip \
-      gzip
+RUN REPOLIST=rhel-7-server-rpms,rhel-7-server-optional-rpms \
+    INSTALL_PKGS="golang-github-cpuguy83-go-md2man openssl lsof lshw \
+      net-tools numactl sysstat wget screen psmisc zip unzip" && \
+    yum -y update-minimal --disablerepo "*" --enablerepo rhel-7-server-rpms --setopt=tsflags=nodocs \
+      --security --sec-severity=Important --sec-severity=Critical && \
+    yum -y install --disablerepo "*" --enablerepo ${REPOLIST} --setopt=tsflags=nodocs ${INSTALL_PKGS} && \
+    go-md2man -in /tmp/help.md -out /help.1 && rm -f /tmp/help.md && \
+#clean the cache
+    yum clean all
 
-RUN curl https://bootstrap.pypa.io/get-pip.py | python - ; pip install httplib2
+RUN curl https://bootstrap.pypa.io/get-pip.py | python - && \
+    pip install --no-cache-dir httplib2
 
 COPY functions /etc/init.d/
-
-# Install gosu for startup script
-RUN gpg --keyserver ha.pool.sks-keyservers.net --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4 \
-    && curl -o /usr/local/bin/gosu -sSL "https://github.com/tianon/gosu/releases/download/1.4/gosu-amd64" \
-    && curl -o /usr/local/bin/gosu.asc -sSL "https://github.com/tianon/gosu/releases/download/1.4/gosu-amd64.asc" \
-    && gpg --verify /usr/local/bin/gosu.asc \
-    && rm /usr/local/bin/gosu.asc \
-    && chmod +x /usr/local/bin/gosu
+COPY licenses /licenses
 
 # Create Couchbase user with UID 1000 (necessary to match default
 # boot2docker UID)
-RUN groupadd -g1000 couchbase && \
-    useradd couchbase -g couchbase -u1000 -m -s /bin/bash && \
+RUN useradd couchbase -g 0 -u1000 -m -s /bin/bash && \
     echo 'couchbase:couchbase' | chpasswd
 
 ENV CB_VERSION=4.6.0 \
@@ -37,28 +34,29 @@ ENV CB_VERSION=4.6.0 \
     PATH=$PATH:/opt/couchbase/bin:/opt/couchbase/bin/tools:/opt/couchbase/bin/install
 
 # Install couchbase
-RUN rpm --install $CB_RELEASE_URL/$CB_VERSION/$CB_PACKAGE
-
-#clean the cache
-RUN yum clean all
-
+RUN rpm --install $CB_RELEASE_URL/$CB_VERSION/$CB_PACKAGE && \
+    chown -R couchbase:0 /opt/couchbase && \
+    chmod -R g=u /opt/couchbase
 
 COPY scripts/couchbase-start /usr/local/bin/
 
-LABEL Name=rhel7/couchbase-server
-LABEL Release=Latest 
-LABEL Vendor=Couchbase 
-LABEL Version=4.6.0 
-LABEL Architecture="x86_64"
-LABEL RUN="docker run -d --rm --privileged -p 8091:8091 --restart always --name NAME IMAGE \
+LABEL name=rhel7/couchbase-server
+LABEL release=Latest 
+LABEL vendor=Couchbase 
+LABEL version=${CB_VERSION} 
+LABEL architecture="x86_64"
+LABEL summary="Couchbase"
+LABEL description="Couchbase will ....."
+LABEL run="docker run -d --rm --privileged -p 8091:8091 --restart always --name NAME IMAGE \
             -v /opt/couchbase/var:/opt/couchbase/var \
             -v /opt/couchbase/var/lib/moxi:/opt/couchbase/var/lib/moxi \
             -v /opt/couchbase/var/lib/stats:/opt/couchbase/var/lib/stats "
 
+USER 1000
 
 ENTRYPOINT ["couchbase-start"]
 CMD ["couchbase-server", "--", "-noinput"]
 # pass -noinput so it doesn't drop us in the erlang shell
 
 EXPOSE 8091 8092 8093 11207 11210 11211 18091 18092
-#VOLUME /opt/couchbase/var
+VOLUME /opt/couchbase/var
